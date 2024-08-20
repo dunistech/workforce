@@ -1,19 +1,13 @@
 
-from flask import g, get_flashed_messages, stream_template, Blueprint, flash, request, jsonify
+from flask import g, stream_template, Blueprint, flash, request, jsonify
 from flask_login import current_user, login_required
-from sqlalchemy import func
-import traceback
-from datetime import datetime, date, timedelta
 
 from web.models import (
-    Task, Assigned_Task, User, Attendance
+    db, Task, Assigned_Task, User
 )
-
-from web import db, csrf
 
 from web.utils.db_session_management import db_session_management
 from web.utils.decorators import role_required
-
 
 def handle_response(message=None, alert=None, data=None):
     """ only success response should have data and be set to True. And  """
