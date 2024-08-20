@@ -68,7 +68,7 @@ qualification_choice = [
 
 # Generate choices for years of experience from 1 to 30
 experience_years_choice = [
-    ('', 'Years Of Experience'),  # Initial default option
+    ("0", 'Years Of Experience'),  # Initial default option
 ] + [(str(i), str(i)) for i in range(1, 31)]  # List comprehension to generate options for 1 to 30 years
 
 

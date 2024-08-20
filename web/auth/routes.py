@@ -1,13 +1,13 @@
 from datetime import datetime
 from flask import abort, current_app, session, jsonify, render_template, url_for, flash, redirect, request, Blueprint
 from flask_login import login_user, current_user, logout_user, login_required
-from sqlalchemy import or_
 
 import sqlalchemy as sa, traceback
-
+from sqlalchemy.exc import OperationalError, DatabaseError
+from sqlalchemy import or_
 from web.apis.errors import bad_request
-from web import db, bcrypt
-from web.models import Query, Role, User, Notification
+from web import db, bcrypt, csrf
+from web.models import db, Query, Role, User, Notification
 
 from web.utils import save_image, email, ip_adrs
 from web.auth.forms import (QueryForm, SignupForm, SigninForm, UpdateMeForm, ForgotForm, ResetForm)
@@ -15,7 +15,6 @@ from web.utils.decorators import admin_or_current_user, role_required
 from web.utils.providers import oauth2providers
 
 from web.utils.db_session_management import db_session_management
-from web import db, csrf
 
 #oauth implimentations
 import secrets, requests
@@ -171,29 +170,42 @@ def oauth2_callback(provider):
 @db_session_management
 def signin():
 
-    referrer = request.referrer
-    if not current_user.is_anonymous:
-        return redirect(url_for('main.index'))
+    try:
+        referrer = request.referrer
+        if not current_user.is_anonymous:
+            return redirect(url_for('main.index'))
 
-    form = SigninForm()
-    if form.validate_on_submit():
-        user = User.query.filter( or_( User.email==form.signin.data, User.phone==form.signin.data, User.username==form.signin.data) ).first()
-        if user and bcrypt.check_password_hash(user.password, form.password.data):
-            user.online = True
-            user.last_seen = datetime.utcnow()
-            user.ip = ip_adrs.user_ip()
-            db.session.commit()
-            login_user(user, remember=form.remember.data)
-            #login_user(user)
-            next_page = request.args.get('next')
-            #return f"{current_user, form.remember.data}"
-            return redirect(next_page or url_for('main.index'))
-        else: 
-            flash('Invalid Login Details. Try Again', 'danger')
-            return redirect(referrer)
-            #return f"Authentication failed. Reach out to admin regarding this"
-    return render_template('auth/signin.html', title='Sign In', form=form)
-
+        form = SigninForm()
+        if form.validate_on_submit():
+            user = User.query.filter( or_( User.email==form.signin.data, User.phone==form.signin.data, User.username==form.signin.data) ).first()
+            if user and bcrypt.check_password_hash(user.password, form.password.data):
+                user.online = True
+                user.last_seen = datetime.utcnow()
+                user.ip = ip_adrs.user_ip()
+                db.session.commit()
+                login_user(user, remember=form.remember.data)
+                #login_user(user)
+                next_page = request.args.get('next')
+                #return f"{current_user, form.remember.data}"
+                return redirect(next_page or url_for('main.index'))
+            else: 
+                flash('Invalid Login Details. Try Again', 'danger')
+                return redirect(referrer)
+                #return f"Authentication failed. Reach out to admin regarding this"
+        return render_template('auth/signin.html', title='Sign In', form=form)
+    
+    except OperationalError:
+        # Return a graceful error message if the database connection fails
+        flash('Unable to connect to the database. Please try again.', 'danger')
+        return redirect(referrer)
+        # return jsonify({'error': 'Unable to connect to the database. Please try again later.'}), 500
+    
+    except DatabaseError:
+        # Handle other database-related errors
+        flash('A database error occurred. Please contact support.', 'danger')
+        return redirect(referrer)
+        # return jsonify({'error': 'A database error occurred. Please contact support.'}), 500
+    
 @auth.route("/signout")
 @login_required
 @db_session_management
@@ -209,7 +221,6 @@ def signout():
 # @db_session_management
 def update(username):
     try:
-
         user = User.query.filter(User.username==username).first_or_404()
         form = UpdateMeForm()
         query_form = QueryForm()
@@ -374,114 +385,129 @@ def forgot():
 @login_required
 @db_session_management
 def unverified():
-    if request.method == 'POST':
-        email.verify_email(current_user)
-        flash('Verication Emails Sent Again, Check You Mail Box', 'info')
-    return render_template('auth/unverified.html')
-
+    try:
+        if request.method == 'POST':
+            email.verify_email(current_user)
+            flash('Verication Emails Sent Again, Check You Mail Box', 'info')
+        return render_template('auth/unverified.html')
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": f"{e}"})
+    
 #->for both verify/reset tokens
 @auth.route("/confirm/<token>", methods=['GET', 'POST'])
 @db_session_management
 def confirm(token):
-    #print(current_user.generate_token(type='verify'))
-    if current_user.is_authenticated:
-        #print(current_user.generate_token(type='verify')) #generate-token
-        return redirect(url_for('main.index'))
-    
-    conf = User.verify_token(token) #verify
+    try:
+        #print(current_user.generate_token(type='verify'))
+        if current_user.is_authenticated:
+            #print(current_user.generate_token(type='verify')) #generate-token
+            return redirect(url_for('main.index'))
+        
+        conf = User.verify_token(token) #verify
 
-    if not conf:
-        flash('That is an invalid or expired token', 'warning')
-        return redirect(url_for('auth.signin'))
-    
-    user = conf[0] 
-    type = conf[1]
-
-    if not user :
-        flash('Invalid/Expired Token', 'warning')
-        return redirect(url_for('main.index'))
-    
-    if type == 'verify' and user.verified == True:
-        flash(f'Weldone {user.username}, you have done this before now', 'success')
-        return redirect(url_for('auth.signin', _external=True))
-
-    if type == 'verify' and user.verified == False:
-        user.verified = True
-        db.session.commit()
-        flash(f'Weldone {user.username}, Your Email Address is Confirmed, Continue Here', 'success')
-        return redirect(url_for('auth.signin', _external=True))
-
-    if type == 'reset':
-        form = ResetForm() 
-        if form.validate_on_submit():
-            hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-            user.password = hashed_password
-            db.session.commit()
-            flash('Your password has been updated! Continue', 'success')
+        if not conf:
+            flash('That is an invalid or expired token', 'warning')
             return redirect(url_for('auth.signin'))
-        return render_template('auth/reset.html', user=user, form=form)
+        
+        user = conf[0] 
+        type = conf[1]
 
+        if not user :
+            flash('Invalid/Expired Token', 'warning')
+            return redirect(url_for('main.index'))
+        
+        if type == 'verify' and user.verified == True:
+            flash(f'Weldone {user.username}, you have done this before now', 'success')
+            return redirect(url_for('auth.signin', _external=True))
+
+        if type == 'verify' and user.verified == False:
+            user.verified = True
+            db.session.commit()
+            flash(f'Weldone {user.username}, Your Email Address is Confirmed, Continue Here', 'success')
+            return redirect(url_for('auth.signin', _external=True))
+
+        if type == 'reset':
+            form = ResetForm() 
+            if form.validate_on_submit():
+                hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+                user.password = hashed_password
+                db.session.commit()
+                flash('Your password has been updated! Continue', 'success')
+                return redirect(url_for('auth.signin'))
+            return render_template('auth/reset.html', user=user, form=form)
+
+    except Exception as e:
+        return jsonify({"success": False, "error": f"{e}"})
+    
 @auth.route('/query/<int:user_id>', methods=['POST'])
 @login_required
 @csrf.exempt
 def query(user_id):
-    
-    user = User.query.get_or_404(user_id)
-    
-    if 'file_input' not in request.files:
-        return jsonify({"success": False, "error": "No file part"}), 400
-
-    file_input = request.files['file_input']
-    if file_input.filename == '':
-        return jsonify({"success": False, "error": "No selected file"}), 400
-
-    if file_input:
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        if 'file_input' not in request.files:
+            return jsonify({"success": False, "error": "No file part"}), 400
 
         file_input = request.files['file_input']
+        if file_input.filename == '':
+            return jsonify({"success": False, "error": "No selected file"}), 400
 
-        # Specify custom upload path and username
-        saved_filename = save_image.save_file(file_input, './static/images/queries', user.username)
+        if file_input:
 
-        query = Query(user_id=user.id, file_path=saved_filename, message=request.form.get('message'))
-        db.session.add(query)
-        db.session.commit()
+            file_input = request.files['file_input']
 
-        # Example usage:
-        subject = "Query Alert"
-        sender = f"{current_app.config['MAIL_USERNAME']}"
-        recipients = [f"{user.email}", "jameschristo962@gmail.com"]
-        text_body = request.form.get('message')
-        html_body = f"<p>{request.form.get('message')}.</p>"
-        email.send_email(subject, sender, recipients, text_body, html_body)
+            # Specify custom upload path and username
+            saved_filename = save_image.save_file(file_input, './static/images/queries', user.username)
 
-        # Create in-app notification
-        notification = Notification(
-            user_id=user.id, 
-            file_path = f"./static/images/queries/{saved_filename}",
-            message='You have received a new query.')
-        db.session.add(notification)
-        db.session.commit()
+            query = Query(user_id=user.id, file_path=saved_filename, message=request.form.get('message'))
+            db.session.add(query)
+            db.session.commit()
 
-        return jsonify({"success": True, "message": "Query sent successfully!"}), 200
+            # Example usage:
+            subject = "Query Alert"
+            sender = f"{current_app.config['MAIL_USERNAME']}"
+            recipients = [f"{user.email}", "jameschristo962@gmail.com"]
+            text_body = request.form.get('message')
+            html_body = f"<p>{request.form.get('message')}.</p>"
+            email.send_email(subject, sender, recipients, text_body, html_body)
 
-    return jsonify({"success": False, "error": "File upload failed"}), 400
+            # Create in-app notification
+            notification = Notification(
+                user_id=user.id, 
+                file_path = f"./static/images/queries/{saved_filename}",
+                message='You have received a new query.')
+            db.session.add(notification)
+            db.session.commit()
 
+            return jsonify({"success": True, "message": "Query sent successfully!"}), 200
+
+        return jsonify({"success": False, "error": "File upload failed"}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": f"{e}"})
+    
 @auth.route('/fetch_notifications', methods=['GET'])
 @login_required
 def fetch_notifications():
-    notifications = Notification.query.filter_by(
-        user_id=current_user.id, is_read=False, deleted=False
-        ).order_by(Notification.created_at.desc()).all()
-    notifications_list = [{
-        'id': notification.id,
-        'message': notification.message,
-        'is_read': notification.is_read,
-        'file_path': notification.file_path,
-        'created_at': notification.created_at.strftime('%a, %b %d %I:%M %p')
-    } for notification in notifications]
+    try:
+        notifications = Notification.query.filter_by(
+            user_id=current_user.id, is_read=False, deleted=False
+            ).order_by(Notification.created_at.desc()).all()
+        notifications_list = [{
+            'id': notification.id,
+            'message': notification.message,
+            'is_read': notification.is_read,
+            'file_path': notification.file_path,
+            'created_at': notification.created_at.strftime('%a, %b %d %I:%M %p')
+        } for notification in notifications]
 
-    return jsonify({"notifications": notifications_list}), 200
+        return jsonify({"notifications": notifications_list}), 200
 
+    except Exception as e:
+        # Handle other database-related errors
+        return jsonify({'error': f'{e}'}), 500
+    
 @auth.route('/mark_as_read/<int:notification_id>', methods=['PUT'])
 @login_required  # Ensure user is authenticated
 @role_required('manager', 'admin', '*')
