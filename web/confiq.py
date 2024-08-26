@@ -19,7 +19,9 @@ SQLALCHEMY_DATABASE_ENGINE = {
     'rollback_on_exception': True,
 }
 
-SQLALCHEMY_DATABASE_URI = environ.get('DATABASE_URI')
+#SQLALCHEMY_DATABASE_URI = environ.get('DATABASE_URI')
+SQLALCHEMY_DATABASE_URI="mysql+mysqlconnector://root@localhost:3306/dunis_attendance_system_db?collation=utf8mba_general_ci"
+
 
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_POOL_SIZE = 50   # Increase the pool size if necessary
