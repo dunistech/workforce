@@ -30,7 +30,69 @@
     {% include "incs/attendance_modal.html" %}
 
 <script>
-    function showCrudModal(message) {
+
+$(document).ready(function() {
+
+    $('#download_attendance').on('click', function() {
+        var $this = $(this);
+        $this.html('<i class="fa fa-circle-notch fa-spin fa-1x fa-fw"></i>');
+        let cloned_attendance_page = document.querySelector('.attendance_table_div')
+        $(cloned_attendance_page).css("height", "100%");
+        html2canvas(
+            cloned_attendance_page ).then(function(canvas) {
+            var imgData = canvas.toDataURL('image/png');
+            var pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'px',
+                format: [canvas.width, canvas.height]
+            });
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.save('attendance.pdf');
+
+            $this.html('Download Attendance');
+        }).catch(function(error) {
+            console.error('Error generating ID card:', error);
+            $this.html('Download ID Card');
+        });
+    });
+
+    
+});
+
+
+
+
+/* $(document).ready(function() {
+
+    $('#download_attendance').on('click', function() {
+        var $this = $(this);
+        $this.html('<i class="fa fa-circle-notch fa-spin fa-1x fa-fw"></i>');
+
+        html2canvas(
+            document.querySelector('.attendance_table_div')).then(function(canvas) {
+            var imgData = canvas.toDataURL('image/png');
+            var pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'px',
+                format: [canvas.width, canvas.height]
+            });
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.save('attendance.pdf');
+
+            $this.html('Download Attendance');
+        }).catch(function(error) {
+            console.error('Error generating ID card:', error);
+            $this.html('Download ID Card');
+        });
+    });
+
+    
+});
+ */
+
+ function showCrudModal(message) {
         document.getElementById('crudModalBody').innerText = message;
         $('#crudModal').modal('show');
     }
