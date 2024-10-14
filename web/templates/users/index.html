@@ -100,7 +100,7 @@
                              <tbody>
                               
                               {% for user in users %}
-                              {% for role in user.role %}
+                              {% for role in user.roles %}
                               {% if role.type|string == "staff"|string or role.type|string =="instructor" %}
                                       <tr>
                                           <td class="text-center">
@@ -149,7 +149,7 @@
                               </thead>
                               <tbody>
                                   {% for user in users %}
-                                  {% for role in user.role %}
+                                  {% for role in user.roles %}
                                        {% if role.type|string == "student"|string %}
                                              <tr>
                                                 <td class="text-center">

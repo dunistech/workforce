@@ -8,7 +8,7 @@ from flask_login import LoginManager
 from flask_mail import Mail
 from flask_moment import Moment
 from flask_session import Session
-from flask_oauthlib.client import OAuth
+# from flask_oauthlib.client import OAuth
 from web.models import db, User
 
 from dotenv import load_dotenv
@@ -22,6 +22,9 @@ s_manager = LoginManager()
 mail = Mail()
 migrate = Migrate()
 moment = Moment()
+# oauth = OAuth()
+
+from authlib.integrations.flask_client import OAuth  # New
 oauth = OAuth()
 
 @s_manager.user_loader
@@ -68,6 +71,10 @@ def create_app():
     from web.errors.handlers import errors_bp
     app.register_blueprint(errors_bp)
     
+    from web.utils.user_role import has_role
+    # Register the filter with Flask/Jinja
+    app.jinja_env.filters['has_role'] = has_role
+
     app.jinja_env.filters['slugify'] = slug.slugify
     app.jinja_env.globals.update(is_active=activelink.is_active)
 

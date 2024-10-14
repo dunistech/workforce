@@ -1,8 +1,8 @@
 def direct_user(user):
     if user.is_authenticated:
-        #roles = [role.type for role in current_user.role]
+        #roles = [role.type for role in current_user.roles]
         user_url = ''
-        roles = [user.role[0].type for role in current_user.role]
+        roles = [user.roles[0].type for role in current_user.roles]
             if 'admin' in roles:
                 user_url = redirect(url_for('main.index'))
             elif 'kitchen' in roles:
@@ -20,8 +20,8 @@ def direct_user(user):
 
 """ def direct_user(user):
     if user.is_authenticated:
-        #roles = [role.type for role in current_user.role]
-        roles = [user.role[0].type for role in current_user.role]
+        #roles = [role.type for role in current_user.roles]
+        roles = [user.roles[0].type for role in current_user.roles]
             if 'admin' in roles:
                 return redirect(url_for('main.index'))
             elif 'kitchen' in roles:

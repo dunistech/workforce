@@ -20,7 +20,7 @@
 </style>
 
 <!----modal assigned tasks -->
-<div class="modal fade" id="idcard_moal" tabindex="-1" 
+<div class="modal fade" id="idcard_modal" tabindex="-1" 
 aria-labelledby="idCardModalScrollableTitle" aria-modal="true" role="dialog">
     <div class="modal-dialog modal-dialog-scrollable" role="document">
        <div class="modal-content">
@@ -56,7 +56,7 @@ aria-labelledby="idCardModalScrollableTitle" aria-modal="true" role="dialog">
                         <p id="student-phone" class="card-text"><strong>Phone:</strong>.</p>
                       </div>
                       <!-- Company Logo -->
-                      <img src="{{url_for('static', filename='images/logo/favicon.png')}}" 
+                      <img src="{{url_for('static', filename=config['LOGO']['academy_logo'])}}" 
                       alt="Company Logo" class="card-logo">
                     </div>
                   </div>

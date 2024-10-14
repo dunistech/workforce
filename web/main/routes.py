@@ -1,5 +1,5 @@
 
-from flask import g, stream_template, Blueprint, flash, request, jsonify
+from flask import g, redirect, stream_template, Blueprint, flash, request, jsonify, url_for
 from flask_login import current_user, login_required
 
 from web.models import (
@@ -64,19 +64,37 @@ def index():
     return stream_template('index.html', **context)
 
 @main.route("/users", methods=['GET', 'POST'])
-@role_required('admin')
+@role_required('hr', 'dev')
 @db_session_management
 def users():
 
     referrer =  request.headers.get('Referer')
     
+    # if not any(role in [r.type for r in current_user.roles] for role in ["hr", "dev"]):
+    #     return jsonify({
+    #         'response': f'Hey! {current_user.name or current_user.username}, You do not have permission to access users',
+    #         'flash': 'alert-danger',
+    #         'link': f'{referrer}'
+    #     })
+    #     # redirect(url_for('main.index')) #abort(403) #forbidden
+    
+    # else:
+    #     pass
+            
     username, action = request.args.get('username', None), request.args.get('action', None)
     if username != None and action == 'del':
-        if not current_user.is_admin():
-            return jsonify({ 
-                'response': f'Hey! {current_user.name or current_user.username}, You do not have permission to remove or delete this account',
-                'flash':'alert-danger',
-                'link': f'{referrer}'})
+        
+        # if not any(roles in [role.type for role in current_user.roles] for roles in ["hr", "dev"]):
+        #     return jsonify({ 
+        #         'response': f'Hey! {current_user.name or current_user.username}, You do not have permission to remove or delete this account',
+        #         'flash':'alert-danger',
+        #         'link': f'{referrer}'})
+
+        # if not current_user.is_admin():
+        #     return jsonify({ 
+        #         'response': f'Hey! {current_user.name or current_user.username}, You do not have permission to remove or delete this account',
+        #         'flash':'alert-danger',
+        #         'link': f'{referrer}'})
 
         user = User.query.filter(User.deleted == 0, User.username==username).first()
         
@@ -88,7 +106,7 @@ def users():
             
             flash(f'User Has Been Deleted!', 'danger')
             return jsonify({ 
-                'response': f'Hmm, User Deleted!!!',
+                'response': f'User deleted successfully',
                 'flash':'alert-danger',
                 'link': f'{referrer}'})
             
@@ -104,9 +122,9 @@ def users():
     g.brand = {"name":"dunistech.ng"}
     g.user = User.query.filter(User.deleted == 0, User.username==username).first()
     context = {
-    'pname' : 'Users : (staffs | clients | student)',
-    'users': users
-    }
+        'pname' : 'Users : (staffs | intern | clients | student |)',
+        'users': users
+        }
     
     return stream_template('users/index.html', **context)
     # return render_template('users/index.html', **context)

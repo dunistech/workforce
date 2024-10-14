@@ -27,8 +27,19 @@ def hash_txt(txt):
 
 @auth.route("/signup", methods=['GET', 'POST'])
 @db_session_management
+@role_required('hr', 'admin', 'dev')
 def signup():
+    
+    # if current_user.is_authenticated:
+    #     return redirect(url_for('main.index'))
+    
     if current_user.is_authenticated:
+        # Allow only users with 'admin' or 'hr' role to access the signup page
+        if not any(role.type in ['admin', 'devops', 'hr', 'dev'] for role in current_user.roles):
+            flash('You do not have permission to create a new account.', 'danger')
+            return redirect(url_for('main.index'))
+    else:
+        flash('An admin or HR has to login and create your account first.', 'danger')
         return redirect(url_for('main.index'))
     
     form = SignupForm()
@@ -71,6 +82,7 @@ def signup():
 
             flash('Your account has been created! You are now able to log in', 'success')
             return redirect(url_for('auth.signin'))
+        
         except Exception as e:
             print(traceback.print_exc())
             db.session.rollback()  # Rollback the transaction to maintain data integrity
@@ -217,10 +229,19 @@ def signout():
 
 @auth.route("/<string:username>/update", methods=['GET', 'POST'])
 @login_required
-@admin_or_current_user()
+# @role_required('hr', 'admin', 'dev')
+# @admin_or_current_user()
 # @db_session_management
 def update(username):
     try:
+        from flask import jsonify
+        # Check if the current user has the necessary role or if they are accessing their own information
+        if not (any(role.type in ["hr", "dev"] for role in current_user.roles) or current_user.username == username):
+            return jsonify({
+                'message': f'Hey! {current_user.name or current_user.username}, you do not have permission to access this user information.',
+                'success': False
+            })
+                    
         user = User.query.filter(User.username==username).first_or_404()
         form = UpdateMeForm()
         query_form = QueryForm()
@@ -233,12 +254,12 @@ def update(username):
                 return validation_response """
             
         # only admins/account-ownr | this is also done by this decorator `@admin_or_current_user()`
-        if not ( (current_user.is_admin()) | (current_user.username == user.username)):
-            return redirect(url_for('auth.update', username = current_user.username))
+        # if not ( (current_user.is_admin()) | (current_user.username == user.username)):
+        #     return redirect(url_for('auth.update', username = current_user.username))
 
-        if user.role:
+        if user.roles:
             # Get the user's current role
-            current_role = [ (r.id, r.type) for r in user.role] or [('0', 'Not Granted')]
+            current_role = [ (r.id, r.type) for r in user.roles] or [('0', 'Not Granted')]
             other_roles = Role.query.filter( ~Role.id.in_(current_role[0]) if current_role[0] else None ).all() 
 
             choices = [ ( x[0], x[1]) for x in current_role] or [('0', 'nothing')] #if current_role else [ '', 'Nothing']
@@ -289,7 +310,7 @@ def update(username):
             user.category = form.category.data or 'user'
             new_role_ids = [form.role.data]  # Assuming the form data provides a list of role IDs
             new_roles = Role.query.filter(Role.id.in_(new_role_ids) ).all()
-            user.role = new_roles
+            user.roles = new_roles
             
             # Additional fields from UpdateMeForm
             user.designation = form.designation.data

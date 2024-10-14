@@ -38,7 +38,7 @@
                                     </div>
                                     <button class="btn btn-secondary rounded-pill mt-2" 
                                     data-toggle="modal" data-user-id="{{ current_user.id }}"
-                                    data-target="#idcard_moal">
+                                    data-target="#idcard_modal">
                                         Click to view/download</button>
                                 </div>
                             </div>
@@ -65,7 +65,7 @@
                                 <div id="message" class="mt-3"></div>
                             </div>
                         </div>
-                        {% for role in current_user.role %}
+                        {% for role in current_user.roles %}
                         {% if role.type in ["admin", "staff", "instructor"] %}
                         <div class="col-lg-4 col-md-4">
                             <div class="card card-block card-stretch card-height">
@@ -133,7 +133,7 @@
                                     <tr id="original-task-row" class="d-none">
                                         <td></td>
                                         <td>
-                                            {% for role in current_user.role  %}
+                                            {% for role in current_user.roles  %}
                                             {% if role.type == "student" %}
                                             <input id="assigned_task_select" type="text" class="form-control" 
                                             placeholder="What did you learn today?"> 

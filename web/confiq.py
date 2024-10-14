@@ -19,18 +19,15 @@ SQLALCHEMY_DATABASE_ENGINE = {
     'rollback_on_exception': True,
 }
 
-#SQLALCHEMY_DATABASE_URI = environ.get('DATABASE_URI')
-SQLALCHEMY_DATABASE_URI="mysql+mysqlconnector://root@localhost:3306/dunis_attendance_system_db?collation=utf8mba_general_ci"
-
+SQLALCHEMY_DATABASE_URI = environ.get('SQLALCHEMY_DATABASE_URI')
+# SQLALCHEMY_DATABASE_URI="mysql+mysqlconnector://root@localhost:3306/dunis_attendance_system_db?collation=utf8mba_general_ci"
+# SQLALCHEMY_DATABASE_URI = 'mysql+mysqlconnector://user:password@localhost/db_name?charset=utf8mb4&collation=utf8mb4_general_ci'
 
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_POOL_SIZE = 50   # Increase the pool size if necessary
 SQLALCHEMY_POOL_TIMEOUT = 30  # Increase the pool timeout if necessary
 SQLALCHEMY_MAX_OVERFLOW = 20  # Allow up to 20 additional connections beyond the pool size
-
-""" 
 SQLALCHEMY_POOL_RECYCLE = 3600  # Recycle connections every hour
- """
  
 LOG_TO_STDOUT = environ.get('LOG_TO_STDOUT')
 MAIL_SERVER = environ.get('MAIL_SERVER')
@@ -55,3 +52,12 @@ MAX_CONTENT_LENGTH = 1024 * 1024
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SECURE = True  # If using HTTPS
 SESSION_TYPE = 'filesystem'
+
+LOGO = {
+        'favicon': './images/logo/dunistech.png',
+        'navlogo': './images/logo/dunistech.png',
+        'academy_logo': './images/logo/dunistech_academy.png',
+        'main_logo': './images/logo/dunistech.png',
+        'footer_logo': './images/logo/dunistech.png',
+        'mobile_logo': './images/logo/dunistech.png'
+    }
