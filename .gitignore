@@ -3,3 +3,6 @@ migrations/
 flask_sessions/
 env/
 venv/
+web/.env
+*.env
+*.log
