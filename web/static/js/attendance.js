@@ -67,37 +67,43 @@ $(document).ready(function() {
         getTotalAttendance();
     });
 
-
+    // alert(`${location.protocol}/${location.hostname}/fetch_attendance_all`)
+    // var attendance_url = `${location.protocol}/${location.hostname}/fetch-attendance-all`;
     function fetchAttendance() {
+        var attendance_url = `${location.protocol}/${location.hostname}/fetch-attendance-all`;
+        // console.log("attendance_url", attendance_url);
+        // let attendance_url = `${location.protocol}/${document.domain}/fetch-attendance-all`
         $.ajax({
-            url: '/fetch_attendance_all',
+            url: `/fetch-attendance-all`,
+            // url: attendance_url,
+            // url: `${location.protocol}`+'/'+`${location.hostname}`+'/fetch-attendance-all',
             method: 'GET',
             success: function(response) {
                 if (response.attendances) {
-                    // console.log(response.attendances);
                     const attendanceTableBody = $('#attendance-table-body');
+    
+                    // Clear the table body before adding new rows
+                    attendanceTableBody.empty(); // Clear existing rows
+    
                     response.attendances.forEach((attendance, index) => {
                         const newRow = $('#attendance-empty-row').clone();
                         newRow.removeClass('d-none');
-                        // newRow.removeAttr('id');
-
+    
                         // Populate the row with attendance data
                         newRow.find('td').eq(0).text(index + 1); // Row number
                         newRow.find('td').eq(1).text(attendance.user_info); // User name
                         newRow.find('td').eq(2).text(attendance.sign_in_time); // Sign In Time
                         newRow.find('td').eq(3).text(attendance.sign_out_time); // Sign Out Time
                         newRow.find('td').eq(4).text(attendance.date); // Date
-
+    
                         // Set the data-id attribute for the delete button
-                        // const attendanceID = $(this).closest('td').data('id');
-                        // newRow.find('td').eq(5).attr("data-id", attendance.id);
                         newRow.find('.delete-attendance').attr("data-id", attendance.id);
-
-                        attendanceTableBody.append(newRow);
+    
+                        attendanceTableBody.append(newRow); // Append the new row to the table body
                     });
-
-                    attendanceTableBody.find("#attendance-empty-row").remove(); // Clear the table body first
-
+    
+                    // Remove the empty row placeholder if needed
+                    // attendanceTableBody.find("#attendance-empty-row").remove(); // Optional: Only if you're using this placeholder
                 }
             },
             error: function(error) {
@@ -105,12 +111,14 @@ $(document).ready(function() {
             }
         });
     }
+    
     // Fetch attendance data on page load
     // fetchAttendance();
     // Optionally, fetch attendance data when a modal is opened
-    $('#attendance_moal').on('show.bs.modal', function() {
+    $('#attendance_modal').on('show.bs.modal', function() {
         fetchAttendance();
     });
+    
 
     // delete
     function removeAttendance(attendanceID, button) {
@@ -134,12 +142,69 @@ $(document).ready(function() {
             }
         });
     }
-    // ensure my delete button in each row with a class 'delete-attendance'
+
+    // delete
+    function removeAttendance(attendanceID, button) {
+        const row = button.closest('tr'); // Capture the row element
+
+        $.ajax({
+            url: `/delete-attendance/${attendanceID}`,
+            type: 'DELETE',
+            success: function(data) {
+                if (data.success) {
+                    showCrudModal('Attendance deleted successfully');
+                    row.remove(); // Remove the row on success
+                } else {
+                    showCrudModal(data.error);
+                    console.error('Error deleting attendance:', data.error);
+                }
+            },
+            error: function(xhr, status, error) {
+                showCrudModal(error);
+                console.error('Error:', error);
+            }
+        });
+    }
+
+    function removeAttendanceAll(button) {
+        // Confirm the deletion action
+        if (!confirm("Are you sure you want to delete all attendance records permanently?")) {
+            return; // Exit if the user cancels
+        }
+    
+        $.ajax({
+            url: `/delete-all-attendance`,
+            type: 'DELETE',
+            success: function(data) {
+                if (data.success) {
+                    // Remove all rows in the attendance table
+                    const tableBody = document.querySelector('#attendance-table tbody'); // Assuming the table has an ID of 'attendance-table'
+                    tableBody.innerHTML = ''; // Clear the table body
+    
+                    showCrudModal(data.message); // Show success message
+                } else {
+                    showCrudModal(data.error);
+                    console.error('Error deleting attendance:', data.error);
+                }
+            },
+            error: function(xhr, status, error) {
+                showCrudModal(error);
+                console.error('Error:', error);
+            }
+        });
+    }
+    
+    // Ensure my delete button in each row with a class 'delete-attendance'
     $(document).on('click', '.delete-attendance', function() {
         const attendanceID = $(this).data('id');
-        console.log(attendanceID);
         removeAttendance(attendanceID, this);
     });
+    
+    // Ensure my delete all button with a class 'delete-attendance-all'
+    $(document).on('click', '.delete-attendance-all', function() {
+        removeAttendanceAll(this);
+    });
+    
 
 
 });

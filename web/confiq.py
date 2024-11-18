@@ -7,7 +7,7 @@ load_dotenv()
 TESTING = environ.get('TESTING') 
 DEBUG = environ.get('DEBUG') 
 FLASK_ENV = environ.get('FLASK_ENV')
-FLASK_APP = "web.app.py"
+
 # email config
 MAIL_DEBUG = 1
 #MAIL_USE_SSL = environ.get('MAIL_USE_SSL')
@@ -19,18 +19,16 @@ SQLALCHEMY_DATABASE_ENGINE = {
     'rollback_on_exception': True,
 }
 
-SQLALCHEMY_DATABASE_URI = environ.get('DATABASE_URI')
-#SQLALCHEMY_DATABASE_URI="mysql+mysqlconnector://root@localhost:3306/dunis_attendance_system_db?collation=utf8mba_general_ci"
+SQLALCHEMY_DATABASE_URI = environ.get('SQLALCHEMY_DATABASE_URI')
+# SQLALCHEMY_DATABASE_URI="mysql+mysqlconnector://root@localhost:3306/dunis_attendance_system_db?collation=utf8mba_general_ci"
+# SQLALCHEMY_DATABASE_URI = 'mysql+mysqlconnector://user:password@localhost/db_name?charset=utf8mb4&collation=utf8mb4_general_ci'
 
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_POOL_SIZE = 50   # Increase the pool size if necessary
 SQLALCHEMY_POOL_TIMEOUT = 30  # Increase the pool timeout if necessary
 SQLALCHEMY_MAX_OVERFLOW = 20  # Allow up to 20 additional connections beyond the pool size
-
-""" 
 SQLALCHEMY_POOL_RECYCLE = 3600  # Recycle connections every hour
- """
-
+ 
 LOG_TO_STDOUT = environ.get('LOG_TO_STDOUT')
 MAIL_SERVER = environ.get('MAIL_SERVER')
 MAIL_PORT = int(environ.get('MAIL_PORT') or 25)
@@ -54,4 +52,14 @@ MAX_CONTENT_LENGTH = 1024 * 1024
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SECURE = False  # If using HTTPS
 SESSION_TYPE = 'filesystem'
-# app.config['SESSION_COOKIE_DOMAIN'] = '.yourdomain.com'  # or use the IP address
+
+WTF_CSRF_ENABLED = False # fixes CORS csrf token issues arising from wtf forms.
+
+LOGO = {
+        'favicon': './images/logo/dunistech.png',
+        'navlogo': './images/logo/dunistech.png',
+        'academy_logo': './images/logo/dunistech_academy.png',
+        'main_logo': './images/logo/dunistech.png',
+        'footer_logo': './images/logo/dunistech.png',
+        'mobile_logo': './images/logo/dunistech.png'
+    }

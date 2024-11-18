@@ -1,5 +1,6 @@
 
-from flask import g, stream_template, Blueprint, flash, request, jsonify
+import traceback
+from flask import g, redirect, stream_template, Blueprint, flash, request, jsonify, url_for
 from flask_login import current_user, login_required
 
 from web.models import (
@@ -23,21 +24,6 @@ def handle_response(message=None, alert=None, data=None):
     return response_data
 
 main = Blueprint('main', __name__)
-
-# \\
-@main.route('/test-db')
-# @login_required
-def test_db():
-    try:
-        # Example query using an existing model
-        tasks = Task.query.limit(1).all()  # Fetch a sample of tasks
-        if tasks:
-            return jsonify({'message': 'Database is accessible', 'data': [task.description for task in tasks]}), 200
-        else:
-            return "No tasks found in the database", 404
-    except Exception as e:
-        return str(e), 500
-
 
 @main.route("/")
 @login_required
@@ -79,49 +65,48 @@ def index():
     return stream_template('index.html', **context)
 
 @main.route("/users", methods=['GET', 'POST'])
-@role_required('admin')
+@role_required('hr', 'dev', 'md')
 @db_session_management
 def users():
+    try:
+        referrer =  request.headers.get('Referer')
+                
+        username, action = request.args.get('username', None), request.args.get('action', None)
+        if username != None and action == 'del':
 
-    referrer =  request.headers.get('Referer')
-    
-    username, action = request.args.get('username', None), request.args.get('action', None)
-    if username != None and action == 'del':
-        if not current_user.is_admin():
+            user = User.query.filter(User.deleted == 0, User.username==username).first()
+            
+            if user:
+                
+                user.name = user.name
+                db.session.delete(user)
+                user.deleted = True
+                db.session.commit()
+                
+                flash(f'User Has Been Deleted!', 'danger')
+                return jsonify({ 
+                    'response': f'User deleted successfully',
+                    'flash':'alert-danger',
+                    'link': f'{referrer}'})
+                
             return jsonify({ 
-                'response': f'Hey! {current_user.name or current_user.username}, You do not have permission to remove or delete this account',
-                'flash':'alert-danger',
-                'link': f'{referrer}'})
-
-        user = User.query.filter(User.deleted == 0, User.username==username).first()
+                    'response': f'User Not Available',
+                    'flash':'alert-warning',
+                    'link': f'{referrer}'} )
         
-        if user:
-            
-            user.name = user.name
-            user.deleted = True
-            db.session.commit()
-            
-            flash(f'User Has Been Deleted!', 'danger')
-            return jsonify({ 
-                'response': f'Hmm, User Deleted!!!',
-                'flash':'alert-danger',
-                'link': f'{referrer}'})
-            
-        return jsonify({ 
-                'response': f'User Not Available',
-                'flash':'alert-warning',
-                'link': f'{referrer}'})
-    
-    page = request.args.get('page', 1, type=int)  # Get the requested page number
-    per_page = 10  # Number of items per page
-    #users = User.query.order_by(User.id.desc()).paginate(page=page, per_page=per_page)
-    users = User.query.filter(User.deleted == 0).order_by( User.created.desc()).paginate(page=page, per_page=per_page)
-    g.brand = {"name":"dunistech.ng"}
-    g.user = User.query.filter(User.deleted == 0, User.username==username).first()
-    context = {
-    'pname' : 'Users : (staffs | clients | student)',
-    'users': users
-    }
-    
-    return stream_template('users/index.html', **context)
-    # return render_template('users/index.html', **context)
+        page = request.args.get('page', 1, type=int)  # Get the requested page number
+        per_page = 200  # Number of items per page
+        #users = User.query.order_by(User.id.desc()).paginate(page=page, per_page=per_page)
+        users = User.query.filter(User.deleted == 0).order_by( User.created.desc()).paginate(page=page, per_page=per_page)
+        g.brand = {"name":"dunistech.ng"}
+        g.user = User.query.filter(User.deleted == 0, User.username==username).first()
+        context = {
+            'pname' : 'Users : (staffs | intern | clients | student)',
+            'users': users
+            }
+        
+        return stream_template('users/index_0.html', **context)
+        # return render_template('users/index.html', **context)
+    except Exception as e:
+        traceback.print_exec()
+        return jsonify({'success':True, 'error': f'{e}'})

@@ -1,8 +1,8 @@
 <div class="iq-sidebar  sidebar-default ">
     <div class="iq-sidebar-logo d-flex align-items-center justify-content-between">
         <a href="/" class="header-logo">
-            <img src="{{url_for('static', filename='images/logo/favicon.png')}}" class="img-fluid rounded-normal light-logo" alt="logo">
-            <h5 class="logo-title light-logo ml-3">D.Academy</h5>
+            <img src="{{url_for('static', filename=config['LOGO']['main_logo'])}}" class="img-fluid rounded-normal light-logo" alt="logo">
+            <h5 class="logo-title light-logo ml-3">Dunistech</h5>
         </a>
         <div class="iq-menu-bt-sidebar ml-0" style="cursor:pointer">
             <i class="las la-bars wrapper-menu"></i>
@@ -12,6 +12,16 @@
         style="overflow: hidden; outline: none;">
         <div class="scroll-content">
             <nav class="iq-sidebar-menu">
+
+                <style>
+                .disabled-link {
+                    pointer-events: none; /* Prevents clicking */
+                    color: gray; /* Change text color to indicate it's disabled */
+                    text-decoration: none; /* Remove underline */
+                    opacity: 0.5; /* Make it appear faded */
+                }
+                </style>
+
                 <ul id="iq-sidebar-toggle" class="iq-menu">
                     <li class="{% if is_active('main.index')  %}active text-warning{% endif %}">
                         <a href="/" class="svg-icon">
@@ -36,16 +46,10 @@
                         </a>
                     </li>
 
-                    <li class="{% if is_active('auth.users') %} active text-warning {% endif %}">
+                    {#<li class="{% if is_active('auth.users') %} active text-warning {% endif %}">
+                        {% if current_user|has_role(['hr', 'md', 'dev', 'md']) %} 
                         <a href="{{url_for('main.users')}}">
-                            <svg class="svg-icon" id="p-dash8" width="20" height="20" xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="9" cy="7" r="4"></circle>
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                            </svg>
+                            <i class="las la-users" style="font-size:25px"></i>
                             <span class="ml-4">Users</span>
                             <svg class="svg-icon iq-arrow-right arrow-active" width="20" height="20"
                                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -54,11 +58,11 @@
                                 <path d="M4 4h7a4 4 0 0 1 4 4v12"></path>
                             </svg>
                         </a>
+                        {% endif %}
                     </li>
 
-                    <li>
-                        <button class="btn" data-toggle="modal" 
-                        data-target="#attendance_moal">
+                    <li> 
+                        <button class="btn btn-outline-warning {% if not current_user|has_role(['hr', 'dev', 'md', 'analysis']) %} disabled {% endif %}" data-toggle="modal" data-target="#attendance_modal">
                             <svg class="svg-icon" id="p-dash8" width="20" height="20" 
                             xmlns="http://www.w3.org/2000/svg"
                                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -71,7 +75,34 @@
                             <span class="ml-4">Attendance</span>
                         </button>
 
+                    </li>#}
+                    <li class="{% if is_active('auth.users') %} active text-warning {% endif %}">
+                        <a href="{{url_for('main.users')}}" class="{% if not current_user|has_role(['hr', 'md', 'dev', 'md']) %} disabled-link {% endif %}">
+                            <i class="las la-users" style="font-size:25px"></i>
+                            <span class="ml-4">Users</span>
+                            <svg class="svg-icon iq-arrow-right arrow-active" width="20" height="20"
+                                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="10 15 15 20 20 15"></polyline>
+                                <path d="M4 4h7a4 4 0 0 1 4 4v12"></path>
+                            </svg>
+                        </a>
                     </li>
+                    <li> 
+                        <button class="btn btn-outline-warning" data-toggle="modal" data-target="#attendance_modal"  {% if not current_user|has_role(['hr', 'md', 'dev', 'md', 'analysis']) %} disabled {% endif %}>
+                            <svg class="svg-icon" id="p-dash8" width="20" height="20" 
+                            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" 
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                            <span class="ml-4">Attendance</span>
+                        </button>
+                    </li>
+                    
+                    
 
                 </ul>
             </nav>

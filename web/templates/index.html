@@ -38,7 +38,7 @@
                                     </div>
                                     <button class="btn btn-secondary rounded-pill mt-2" 
                                     data-toggle="modal" data-user-id="{{ current_user.id }}"
-                                    data-target="#idcard_moal">
+                                    data-target="#idcard_modal">
                                         Click to view/download</button>
                                 </div>
                             </div>
@@ -57,7 +57,7 @@
                                     </div>
 
                                     <div class="custom-control custom-switch custom-switch-xl">
-                                        <input type="checkbox" class="custom-control-input" id="customSwitch8" checked>
+                                        <input type="checkbox" class="custom-control-input" id="customSwitch8">
                                         <label class="custom-control-label" for="customSwitch8"> </label>
                                     </div>
                                     <b id="attendance-text" class="text-secondary">Switch to clock out</b>
@@ -65,7 +65,7 @@
                                 <div id="message" class="mt-3"></div>
                             </div>
                         </div>
-                        {% for role in current_user.role %}
+                        {% for role in current_user.roles %}
                         {% if role.type in ["admin", "staff", "instructor"] %}
                         <div class="col-lg-4 col-md-4">
                             <div class="card card-block card-stretch card-height">
@@ -133,7 +133,7 @@
                                     <tr id="original-task-row" class="d-none">
                                         <td></td>
                                         <td>
-                                            {% for role in current_user.role  %}
+                                            {% for role in current_user.roles  %}
                                             {% if role.type == "student" %}
                                             <input id="assigned_task_select" type="text" class="form-control" 
                                             placeholder="What did you learn today?"> 
@@ -222,177 +222,7 @@
 {#<script src = "{{url_for('static', filename='js/attendance.js')}}"></script>#}
 <script src = "{{url_for('static', filename='js/tasks.js')}}"></script>
 <script>
-/*
-    function showCrudModal(message) {
-        document.getElementById('crudModalBody').innerText = message;
-        $('#crudModal').modal('show');
-    }
-    
-    document.getElementById('add-task-button').addEventListener('click', function() {
-        addTaskRow();
-    });
-    
-    function addTaskRow() {
-        const taskTableBody = document.getElementById('task-table-body');
-        const originalRow = document.getElementById('original-task-row');
-    
-        const clonedRow = originalRow.cloneNode(true);
-        clonedRow.id = '';  // Clear the id of the cloned row
-        // clonedRow.style.visibility = '';  // Ensure the cloned row is visible
-        // Assuming clonedRow is already defined somewhere in your code
-        clonedRow.classList.remove("d-none");
 
-    
-        // Insert the new row at the top
-        taskTableBody.insertBefore(clonedRow, taskTableBody.firstChild);
-    
-        // Update the serial number for the new row and subsequent rows
-        updateSerialNumbers();
-    }
-    
-    function saveNewTask(button) {
-        
-        const row = button.closest('tr');
-        const description = row.querySelector('#assigned_task_select').value;
-        const status = row.querySelector('#assigned_task_status').value;
-        const timestamp = row.querySelector('input[type="date"]').value;
-    
-        if (!description) {
-            let desc = row.querySelector('input[type="text"]');
-            desc.style.border = "1px inset brown";
-            desc.placeholder = "fill-out task description to continue";
-            return;
-        } 
-    
-        const task = {
-            description: description,
-            status: status,
-            timestamp: timestamp
-        };
-
-        $.ajax({
-            url: '/tasks',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(task),
-            success: function(data) {
-                if (data.success) {
-
-                    showCrudModal('Task saved successfully');
-                    // Hide the Save and Cancel buttons
-                    row.querySelector('.btn-success').style.display = 'none';
-                    row.querySelector('.btn-warning').style.display = 'none';
-                    row.classList.remove('new-task-row');
-
-                    // Update serial numbers
-                    updateSerialNumbers();
-    
-                } else {
-                    alert.text(data.error).addClass("alert-warning").removeClass("alert-success");
-                }
-            },
-            error: function(xhr, status, error) {
-                showCrudModal(error);
-                console.error('Error:', error);
-            }
-        });
-    }
-    
-    function updateSerialNumbers() {
-        const taskTableBody = document.getElementById('task-table-body');
-        const rows = taskTableBody.querySelectorAll('tr');
-        rows.forEach((row, index) => {
-            const serialCell = row.querySelector('td');
-            if (serialCell) {
-                serialCell.textContent = index + 1;
-            }
-        });
-    }
-    
-    function removeNewTaskRow(button){
-        const row = button.closest('tr');
-        row.remove();
-        updateSerialNumbers();
-    }
-    
-    function updateSerialNumbers() {
-        const taskTableBody = document.getElementById('task-table-body');
-        const rows = taskTableBody.querySelectorAll('tr');
-        rows.forEach((row, index) => {
-            const serialCell = row.querySelector('td');
-            if (serialCell) {
-                serialCell.textContent = index + 1;
-            }
-        });
-    }
-
-
-    function updateTask(element) {
-        const taskId = element.getAttribute('data-task-id');
-        const row = element.closest('tr');
-        const description = row.querySelector('input[type="text"]').value;
-        const status = row.querySelector('select').value;
-        const timestamp = row.querySelector('input[type="date"]').value;
-    
-        const task = {
-            id: taskId,
-            description: description,
-            status: status,
-            timestamp: timestamp
-        };
-    
-        $.ajax({
-            url: `/tasks/${taskId}`,
-            type: 'PUT',
-            contentType: 'application/json',
-            data: JSON.stringify(task),
-            success: function(data) {
-                if (data.success) {
-                    showCrudModal(data.message);
-                    console.log('Task updated successfully');
-                } else {
-                    showCrudModal( data.error );
-                    console.error('Error updating task:', data.error);
-                }
-            },
-            error: function(xhr, status, error) {
-                showCrudModal( error );
-                console.error('Error:', error);
-            }
-        });
-    }
-    
-    function deleteTask(taskId, button) {
-        const row = button.closest('tr'); // Capture the row element
-        $.ajax({
-            url: `/tasks/${taskId}`,
-            type: 'DELETE',
-            success: function(data) {
-                if (data.success) {
-                    showCrudModal('Task deleted successfully');
-                    console.log('Task deleted successfully');
-                    row.remove();
-                } else {
-                    showCrudModal( data.error );
-                    console.error('Error deleting task:', data.error);
-                }
-            },
-            error: function(xhr, status, error) {
-                showCrudModal(error );
-                console.error('Error:', error);
-            }
-        });
-    }
-*/
-
-    /*
-    function showMessage(message, type = 'success') {
-        const messageDiv = document.getElementById('message');
-        const attendanceText = document.getElementById('attendance-text');
-        attendanceText.innerText = `${message}`;
-    }
-    */
-    
     function checkStatus() {
         fetch('/attendance_status')
             .then(response => response.json())
@@ -451,15 +281,7 @@
         document.getElementById('customSwitch8').addEventListener('change', function () {
             handleAttendance(this.checked);
         });
-    });
 
-    document.addEventListener("DOMContentLoaded", function () {
-
-        checkStatus();
-
-        document.getElementById('customSwitch8').addEventListener('change', function () {
-            handleAttendance(this.checked);
-        });
     });
 
     function getTotalAttendance() {
@@ -478,12 +300,13 @@
         getTotalAttendance();
     });
 
+    /*
     function loadUserIdCard(userId) {
         $.ajax({
           url: `/user/${userId}/id-details`,  // Adjust the URL to match your backend route
           type: 'GET',
           success: function(data) {
-            console.log(data)
+            // console.log(data);
             if (data.success) {
               $('#student-photo').attr('src', `/static/images/user/${data.user.photo || '1.png'}`);
               $('#student-name').text(data.user.name);
@@ -503,37 +326,11 @@
       }
       
       // Example usage
-      
       $(document).ready(function() {
         const userId = {{ current_user.id }}; // Adjust this to the current user's ID dynamically
         loadUserIdCard(userId);
       }); 
-      // Trigger the loadUserIdCard function when the modal is shown
-       /* $('#idcard_modal').on('shown.bs.modal', function (e) {
-            alert(true)
-            const userId = $(e.relatedTarget).data('user-id');  // Assuming the triggering element has a data-user-id attribute
-            loadUserIdCard(userId);
-        });*/
-      
-    /*
-    $('#download-id-card').on('click', function() {
-        // without margin around it.
-        $(this).html('<i class="fa fa-circle-notch fa-spin fa-1x fa-fw"></i>');
-        html2canvas(document.querySelector('.id-card'), {
-            onrendered: function(canvas) {
-                var imgData = canvas.toDataURL('image/png');
-                
-                var pdf = new jsPDF({
-                    orientation: 'portrait',
-                    unit: 'px',
-                    format: [canvas.width, canvas.height]
-                });
-                
-                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-                pdf.save('id_card.pdf');
-            }
-        });
-    }); */
+
     $('#download-id-card').on('click', function() {
         var $this = $(this);
         $this.html('<i class="fa fa-circle-notch fa-spin fa-1x fa-fw"></i>');
@@ -555,26 +352,168 @@
             $this.html('Download ID Card');
         });
     });
+*/
+/*
+<h5 id="user-name" class="card-title text-center">.</h5>
+                    <p id="user-category" class="card-text"><strong>Category:</strong> </p>
+                    <p id="user-id-label" class="card-text"><strong></strong></p>
+                    <p id="user-id-value" class="card-text"></p>
+                    <p id="user-role" class="card-text"></p>
+                    <p id="user-batch" class="card-text" style="display: none;"><strong>Batch:</strong> </p>
+                    <p id="user-email" class="card-text"><strong>Email:</strong> </p>
+                    <p id="user-phone" class="card-text"><strong>Phone:</strong> </p>*/
+function loadUserIdCard(userId) {
+    $.ajax({
+        url: `/user/${userId}/id-details`, // Adjust the URL to match your backend route
+        type: 'GET',
+        success: function(data) {
+            if (data.success) {
+                const user = data.user;
+                console.log(user)
+                const photoPath = `/static/images/user/${user.photo || '1.png'}`;
+                const logoPath = user.category === 'student'
+                    ? '/static/images/logo/dunistech_academy.png' // Replace with the actual academy logo path
+                    : '/static/images/logo/dunistech_logo.png'; // Replace with the actual company logo path
 
-    /*
-    $('#download-id-card-0').on('click', function() {
-        // with some margin around it
-        html2canvas(document.querySelector('.id-card')).then(function(canvas) {
-            var imgData = canvas.toDataURL('image/png');
-            var imgWidth = canvas.width;
-            var imgHeight = canvas.height;
-            var margin = 10; // Margin size in pixels
+                // Update common details
+                $('#user-photo').attr('src', photoPath);
+                $('#id-logo').attr('src', logoPath); // Update logo based on category
 
-            var pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'px',
-                format: [imgWidth + 2 * margin, imgHeight + 2 * margin]
-            });
+                $('#user-name').text(user.name);
 
-            pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
-            pdf.save('id_card.pdf');
+                $('#user-email strong').text('Email');
+                $('#user-email small').text(user.email);
+
+                $('#user-phone strong').text('Phone');
+                $('#user-phone small').text(user.phone);
+
+                // Handle category-specific fields
+                switch (user.category) {
+                    case 'user':
+                    case 'staff':
+                    case 'intern-staff':
+                    case 'corper-staff':
+
+                        $('#user-id-label strong').text('Staff ID');
+                        $('#user-id-label small').text(user.reg_num);
+
+                        $('#user-role strong').text(`Designation`);
+                        $('#user-role small').text(`${user.designation}`);
+
+                        $('#user-category strong').text(`category`);
+                        $('#user-category small').text(`${user.category}`);
+
+                        //$('#user-category').text(`Category: ${capitalize(user.category.replace('-', ' '))}`);
+                        //$('#user-category').text(`Category: ${capitalize(user.category)}`);
+                        break;
+
+                    case 'customer':
+                        $('#user-id-label').text('Customer ID:');
+                        $('#user-id-value').text(user.reg_num || 'N/A');
+                        $('#user-role').text('Loyalty Level: ' + (user.loyalty_level || 'Standard'));
+                        $('#user-category').text('Category: Customer');
+                        break;
+
+                    case 'student':
+                        $('#user-id-label strong').text('Registration:');
+                        $('#user-id-label small').text(user.reg_num);
+
+                        $('#user-role strong').text(`Course`);
+                        $('#user-role small').text(`${user.course || 'N/A'}`);
+
+                        $('#user-batch strong').text(`Batch`);
+                        $('#user-batch small').text(`${user.batch || 'N/A'}`).show();
+
+                        $('#user-category strong').text('Category');
+                        $('#user-category small').text('Student');
+
+                        break;
+
+                    default:
+                        console.warn('Unknown category', user.category);
+                        $('#user-category strong').text('Category');
+                        $('#user-category small').text('User');
+                }
+
+                // Hide batch field if not applicable
+                if (user.category !== 'student') {
+                    $('#user-batch').hide();
+                }
+            } else {
+                console.error('Failed to load user ID details:', data.error);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error:', error);
+        }
+    });
+}
+
+// Capitalize helper function
+function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// Example usage
+$(document).ready(function() {
+    const userId = {{ current_user.id }}; // Adjust this dynamically
+    loadUserIdCard(userId);
+});
+
+$('#download-id-card').on('click', function() {
+    const $this = $(this);
+    $this.html('<i class="fa fa-circle-notch fa-spin fa-1x fa-fw"></i>');
+
+    html2canvas(document.querySelector('.id-card')).then(function(canvas) {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'px',
+            format: [canvas.width, canvas.height]
         });
-    }); */
+
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.save('id_card.pdf');
+
+        $this.html('Download');
+    }).catch(function(error) {
+        console.error('Error generating ID card:', error);
+        $this.html('Download ID Card');
+    });
+});
+
+// Capitalize helper function
+function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// Example usage
+$(document).ready(function() {
+    const userId = {{ current_user.id }}; // Adjust this dynamically
+    loadUserIdCard(userId);
+});
+
+$('#download-id-card').on('click', function() {
+    const $this = $(this);
+    $this.html('<i class="fa fa-circle-notch fa-spin fa-1x fa-fw"></i>');
+
+    html2canvas(document.querySelector('.id-card')).then(function(canvas) {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'px',
+            format: [canvas.width, canvas.height]
+        });
+
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.save('id_card.pdf');
+
+        $this.html('Download');
+    }).catch(function(error) {
+        console.error('Error generating ID card:', error);
+        $this.html('Download ID Card');
+    });
+});
 
 </script>
 

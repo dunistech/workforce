@@ -15,7 +15,5 @@ def site_map():
     return jsonify(links), 200
 
 if __name__ == '__main__':
-    # app.run(app, debug=True, port=8000, host='localhost')
-    # app.run("localhost", 8000, True, True)
-    app.run(host='0.0.0.0', debug=True, port=8000)
-
+    #app.run(app, debug=True, port=8000, host='localhost')
+    app.run("localhost", 8000, True, True)

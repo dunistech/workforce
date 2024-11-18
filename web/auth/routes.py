@@ -15,6 +15,8 @@ from web.utils.decorators import admin_or_current_user, role_required
 from web.utils.providers import oauth2providers
 
 from web.utils.db_session_management import db_session_management
+from web.utils.user_role import has_role
+from web import loggings
 
 #oauth implimentations
 import secrets, requests
@@ -27,8 +29,19 @@ def hash_txt(txt):
 
 @auth.route("/signup", methods=['GET', 'POST'])
 @db_session_management
+@role_required('hr', 'admin', 'dev', 'md')
 def signup():
+    
+    # if current_user.is_authenticated:
+    #     return redirect(url_for('main.index'))
+    
     if current_user.is_authenticated:
+        # Allow only users with 'admin' or 'hr' role to access the signup page
+        if not any(role.type in ['admin', 'devops', 'hr', 'dev', 'md'] for role in current_user.roles):
+            flash('You do not have permission to create a new account.', 'danger')
+            return redirect(url_for('main.index'))
+    else:
+        flash('An admin or HR has to login and create your account first.', 'danger')
         return redirect(url_for('main.index'))
     
     form = SignupForm()
@@ -71,6 +84,7 @@ def signup():
 
             flash('Your account has been created! You are now able to log in', 'success')
             return redirect(url_for('auth.signin'))
+        
         except Exception as e:
             print(traceback.print_exc())
             db.session.rollback()  # Rollback the transaction to maintain data integrity
@@ -168,10 +182,12 @@ def oauth2_callback(provider):
 
 @auth.route("/signin", methods=['GET', 'POST'])
 @db_session_management
-
+@csrf.exempt
 def signin():
 
     try:
+
+        # return jsonify(request.form)
         referrer = request.referrer
         if not current_user.is_anonymous:
             return redirect(url_for('main.index'))
@@ -191,21 +207,30 @@ def signin():
                 return redirect(next_page or url_for('main.index'))
             else: 
                 flash('Invalid Login Details. Try Again', 'danger')
+                print("invalid login details")
                 return redirect(referrer)
-                #return f"Authentication failed. Reach out to admin regarding this"
+                # return f"Authentication failed. Reach out to admin regarding this"
         return render_template('auth/signin.html', title='Sign In', form=form)
     
     except OperationalError:
         # Return a graceful error message if the database connection fails
         flash('Unable to connect to the database. Please try again.', 'danger')
-        return redirect(referrer)
-        # return jsonify({'error': 'Unable to connect to the database. Please try again later.'}), 500
+        # return redirect(referrer)
+        return jsonify({'error': 'Unable to connect to the database. Please try again later.'}), 500
     
     except DatabaseError:
-        # Handle other database-related errors
+        # Han
+        # dle other database-related errors
         flash('A database error occurred. Please contact support.', 'danger')
-        return redirect(referrer)
-        # return jsonify({'error': 'A database error occurred. Please contact support.'}), 500
+        # return redirect(referrer)
+        return jsonify({'error': 'A database error occurred. Please contact support.'}), 500
+    
+    except Exception as e:
+        # Handle other database-related errors
+        loggings.error(f"{e}")
+        flash('A database error occurred. Please contact support.', 'danger')
+        # return redirect(referrer)
+        return jsonify({'error': f'{e}'})
     
 @auth.route("/signout")
 @login_required
@@ -218,10 +243,17 @@ def signout():
 
 @auth.route("/<string:username>/update", methods=['GET', 'POST'])
 @login_required
-@admin_or_current_user()
-# @db_session_management
+@role_required('*')
+# @role_required('hr', 'admin', 'dev', 'md')
 def update(username):
     try:
+        # Check if the current user has the necessary role or if they are accessing their own information
+        if not (any(role.type in ["hr", 'md', "dev"] for role in current_user.roles) or current_user.username == username):
+            return jsonify({
+                'message': f'Hey! {current_user.name or current_user.username}, you do not have permission to access this user information.',
+                'success': False
+            })
+                    
         user = User.query.filter(User.username==username).first_or_404()
         form = UpdateMeForm()
         query_form = QueryForm()
@@ -234,16 +266,16 @@ def update(username):
                 return validation_response """
             
         # only admins/account-ownr | this is also done by this decorator `@admin_or_current_user()`
-        if not ( (current_user.is_admin()) | (current_user.username == user.username)):
-            return redirect(url_for('auth.update', username = current_user.username))
+        # if not ( (current_user.is_admin()) | (current_user.username == user.username)):
+        #     return redirect(url_for('auth.update', username = current_user.username))
 
-        if user.role:
+        if user.roles:
             # Get the user's current role
-            current_role = [ (r.id, r.type) for r in user.role] or [('0', 'Not Granted')]
+            current_role = [ (r.id, r.type) for r in user.roles] or [('0', 'Not Assigned')]
             other_roles = Role.query.filter( ~Role.id.in_(current_role[0]) if current_role[0] else None ).all() 
 
             choices = [ ( x[0], x[1]) for x in current_role] or [('0', 'nothing')] #if current_role else [ '', 'Nothing']
-            choices.extend( (role.id, role.type) for role in other_roles) if current_user.is_admin() else None
+            choices.extend( (role.id, role.type) for role in other_roles) if has_role(current_user, ['admin', 'hr', 'md', 'dev']) else None
             # Set choices for the form's role field
             form.role.choices = choices
         
@@ -251,7 +283,8 @@ def update(username):
 
         if form.validate_on_submit():
              # Check if the current user is an admin
-            if not current_user.is_admin():
+            # if not current_user.is_admin(): # no longer admin only
+            if not (any(role.type in ["hr", 'md', 'admin', "dev"] for role in current_user.roles) ):
                 # Check if any critical fields are being changed
                 if (
                     (form.username.data and form.username.data != user.username) or
@@ -261,8 +294,8 @@ def update(username):
                     (form.completion_status.data and form.completion_status.data != user.completion_status) or
                     (form.cert_status.data and form.cert_status.data != user.cert_status)
                 ):
-                    message = "only admin can update these: (\
-                        password, username, reg no, course, completion status, certificate status.)"
+                    message = "only HR or Admin can update any of\
+                    (password, username, reg no, course, completion status, or certificate status.)"
                     return jsonify({"success": False, "error": str(message)}), 200
             
             with db.session.no_autoflush:
@@ -290,7 +323,7 @@ def update(username):
             user.category = form.category.data or 'user'
             new_role_ids = [form.role.data]  # Assuming the form data provides a list of role IDs
             new_roles = Role.query.filter(Role.id.in_(new_role_ids) ).all()
-            user.role = new_roles
+            user.roles = new_roles
             
             # Additional fields from UpdateMeForm
             user.designation = form.designation.data
@@ -531,9 +564,9 @@ def mark_notification_as_read(notification_id):
 @csrf.exempt
 def impersonate():
     try:
-        
-        if not current_user.is_admin() and not "original_user_id" in session:
-            return jsonify({'success': False, 'error': "Admin required"})
+        # if not current_user.is_admin() and not "original_user_id" in session:
+        if not any(role.type in ["hr", 'md', "dev"] for role in current_user.roles) and not "original_user_id" in session:
+            return jsonify({'success': False, 'error': "MD or HR Privilege Required to impersonate account"})
         
         data = request.get_json()
         
@@ -564,7 +597,7 @@ def impersonate():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-
+""""
 @auth.route('/user/<int:user_id>/id-details', methods=['GET'])
 @login_required
 def user_id(user_id):
@@ -587,3 +620,22 @@ def user_id(user_id):
             return jsonify({'success': False, 'error': 'User not found'}), 404
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+from flask import jsonify
+"""
+
+@auth.route('/user/<int:user_id>/id-details', methods=['GET'])
+@login_required
+def get_user_details(user_id):
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+        
+        if user.deleted:
+            return jsonify({'success': False, 'error': 'User has been deleted'}), 410
+        
+        return jsonify({'success': True, 'user': user.to_dict()})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

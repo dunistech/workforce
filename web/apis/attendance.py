@@ -2,7 +2,6 @@
 from flask_login import current_user, login_required
 from datetime import date, datetime, timedelta
 from flask import stream_template, Blueprint, request, jsonify
-from flask_login import current_user, login_required
 from sqlalchemy import func
 import traceback
 from web.models import (
@@ -10,6 +9,8 @@ from web.models import (
 )
 
 from web import db, csrf
+from web.utils.decorators import role_required
+from web.utils.user_role import has_role
 
 def handle_response(message=None, alert=None, data=None):
     """ only success response should have data and be set to True. And  """
@@ -29,6 +30,7 @@ attendance_bp = Blueprint('attendance_api', __name__)
 
 @attendance_bp.route('/create_attendance', methods=['POST'])
 @csrf.exempt
+@login_required
 def attendance():
     try:
         
@@ -40,7 +42,7 @@ def attendance():
         
         user_id = data.get('user_id', current_user.id)
         action = data.get('action')
-        today = data.get('today', datetime.utcnow() )
+        today = data.get('today', datetime.now() )
         comment = data.get('comment', None )
         #print(action == 'signin')
         user = User.query.get(user_id)
@@ -156,6 +158,7 @@ def get_status():
 # fetch/get attendances
 @attendance_bp.route('/fetch_attendance_one', methods=['GET'])
 @login_required
+@role_required('hr', 'analysis', 'admin', 'dev', 'md')
 @csrf.exempt
 def fetch_attendance_one():
     try:
@@ -167,7 +170,7 @@ def fetch_attendance_one():
             attendance_list.append({
                 'id': attendance.id, 
                 'sign_in_time': attendance.sign_in_time.strftime('%d %b %Y %H:%M:%S'),
-                'sign_out_time': attendance.sign_out_time.strftime('%d %b %Y %H:%M:%S') if attendance.sign_out_time else 'N/A'
+                'sign_out_time': attendance.sign_out_time.strftime('%d %b %Y %H:%M:%S') if attendance.sign_out_time else 0
             })
         print(attendance_list)
         return jsonify({"attendances": attendance_list}), 200
@@ -175,8 +178,9 @@ def fetch_attendance_one():
         return jsonify({"success": False, "error": f"{e}"}), 200
 
 # fetch/get all attendances
-@attendance_bp.route('/fetch_attendance_all', methods=['GET'])
+@attendance_bp.route('/fetch-attendance-all', methods=['GET'])
 @login_required
+@role_required('hr', 'analysis', 'admin', 'dev', 'md')
 @csrf.exempt
 def fetch_attendance_all():
     try:
@@ -191,7 +195,7 @@ def fetch_attendance_all():
                 'user_info': attendance.user.name,
                 'username': attendance.user.username,  # Assuming there is a relationship to fetch the username
                 'sign_in_time': attendance.sign_in_time.strftime('%I:%M %p'), 
-                'sign_out_time': attendance.sign_out_time.strftime('%I:%M %p') if attendance.sign_out_time else 'N/A',
+                'sign_out_time': attendance.sign_out_time.strftime('%I:%M %p') if attendance.sign_out_time else 0,
                 # 'date': attendance.timestamp.strftime('%d %b %Y %H:%M:%S') 
                 'date': attendance.timestamp.strftime('%a, %b %d'),  # Date in the format: fri, Jun 21
             })
@@ -220,8 +224,8 @@ def update_assigned_task(task_id):
         return jsonify({"success": True, "message":"Assigned Task updated successfully"}), 200
     except Exception as e:
         return jsonify({"success": False, "error":f"{e}"}), 200
-    
-# deletion
+
+# Deletion of attendance
 @attendance_bp.route('/delete-attendance/<int:attendance_id>', methods=['DELETE'])
 @login_required
 @csrf.exempt
@@ -229,20 +233,43 @@ def delete_attendance(attendance_id):
     try:
         attendance = Attendance.query.get(attendance_id)
         
-        if not attendance or ( attendance.user_id != current_user.id\
-            and not current_user.is_admin()):
-            return jsonify({"error": "Attendance not found"})
+        if not attendance:
+            return jsonify({"success": False, "error": "Attendance not found"})
         
-        if not attendance or attendance.user_id != current_user.id:
-            return jsonify({"error": "Attendance not found"})
+        # Check if the user is either the owner of the attendance or has the 'admin' role
+        if attendance.user_id != current_user.id and not has_role(current_user, ['admin', 'hr', 'md', 'dev', 'md']):
+            return jsonify({"success": False, "error": f"Permission denied. You can't delete {attendance.user.name}'s attendance."})
 
-        attendance.deleted = True  # Mark the attendance as deleted
+        # Delete the attendance record
+        db.session.delete(attendance)
         db.session.commit()
         
         return jsonify({"success": True, "message": "Attendance deleted successfully"}), 200
-    
+
     except Exception as e:
-        return jsonify({"success": False, "error": f"{e}"}), 200
+        db.session.rollback()  # Rollback the session in case of an error
+        return jsonify({"success": False, "error": f"{e}"})
+
+
+# Deletion of all attendance records
+@attendance_bp.route('/delete-all-attendance', methods=['DELETE'])
+@login_required
+@csrf.exempt
+def delete_all_attendance():
+    try:
+        # Check if the user is an admin
+        if not has_role(current_user, ['admin', 'hr', 'md', 'dev', 'md']):
+            return jsonify({"success": False, "error": "Permission denied. You can't delete all attendance records"})
+
+        # Delete all attendance records
+        Attendance.query.delete()  # Deletes all records in the Attendance table
+        db.session.commit()
+
+        return jsonify({"success": True, "message": "All attendance records deleted successfully"}), 200
+
+    except Exception as e:
+        db.session.rollback()  # Rollback in case of an error
+        return jsonify({"success": False, "error": f"{e}"}), 500
 
 @attendance_bp.route('/delete-attendance_0/<int:attendance_id>', methods=['DELETE'])
 @login_required
@@ -262,4 +289,53 @@ def delete_attendance_0(attendance_id):
     
     except Exception as e:
         return jsonify({"success": False, "error":f"{e}"}), 200
-    
+
+
+from flask import Response
+import csv
+from io import StringIO
+from datetime import datetime
+# from your_model_file import Attendance  # Assuming the model and relationships are in place
+
+# Download attendance records as CSV
+@attendance_bp.route('/download_csv-attendance', methods=['GET'])
+@login_required
+@csrf.exempt
+def download_csv_attendance():
+    try:
+        # Fetch attendance records, excluding deleted ones
+        attendances = Attendance.query.filter_by(deleted=False).order_by(Attendance.sign_in_time.desc()).all()
+
+        # Create CSV in memory
+        si = StringIO()
+        cw = csv.writer(si)
+
+        # Write headers to CSV
+        cw.writerow(['S/N', 'User ID', 'Username', 'Name', 'Sign-in Time', 'Sign-out Time', 'Date'])
+
+        # Write attendance data
+        for i, attendance in enumerate(attendances, 1):
+            cw.writerow([
+                i,  # Serial number
+                attendance.user_id,
+                attendance.user.username,  
+                attendance.user.name,
+                attendance.sign_in_time.strftime('%I:%M %p'),
+                attendance.sign_out_time.strftime('%I:%M %p') if attendance.sign_out_time else 0,
+                attendance.timestamp.strftime('%a, %b %d')
+            ])
+
+        # Get CSV data as a string
+        output = si.getvalue()
+        si.close()
+
+        # Get current date and time to include in the filename
+        current_datetime = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+        # Return CSV response with dynamically generated filename
+        return Response(output, mimetype="text/csv",
+                        headers={"Content-Disposition": f"attachment;filename=attendance_records_{current_datetime}.csv"})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": f"{e}"}), 500
+

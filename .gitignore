@@ -1,11 +1,8 @@
 __pycache__/
 migrations/
-flask_session/
+flask_sessions/
 env/
 venv/
-.env
-.start_
+web/.env
+*.env
 *.log
-*.swp
-*.bat
-start_flask_app.bat - Shortcut.lnk

@@ -1,20 +1,26 @@
 {% extends 'base.html' %}
 <title>{% block title %} Signin . Dunistech Academy {% endblock title %}</title>
 {% block content %}
-<div class="wrapper">
-	<section class="login-content">
-	   <div class="container">
-		  <div class="row align-items-center justify-content-center height-self-center">
-			 <div class="col-lg-8">
-				<div class="card auth-card">
-				   <div class="card-body p-0">
-					  <div class="d-flex align-items-center auth-content">
-						 <div class="col-lg-7 align-self-center">
-							<div class="p-3">
-								<h3 class="mb-2 text-primary">Sign-in | Dunistech Academy</h3>
-							   <p class="text-warning">Welcome to Dunis Technologies, Glad to have you in our tech ecosystem.</p>
 
-							   <form class="form-wrap" method="post" action="">
+<div class="wrapper">
+    <section class="login-content">
+        <div class="container">
+
+            <!---->
+            <div class="row align-items-center justify-content-center height-self-center">
+                <div class="col-sm-8 col-lg-8">
+                    <div class="card">
+                        <div class="card-header d-flex align-items-center">
+                            <div class="header-title d-flex align-items-center">
+                                <img style="height:50px; width:50px;" src="/static/images/logo/dunistech.png"
+                                    class="img-fluid" alt="Dunistech Logo">
+                                <h4 class="card-title ms-3" style="margin: 0;">Dunis Technologies Limited</h4>
+                            </div>
+                        </div>
+
+                        <div class="card-body text-warning">Welcome to Dunis Technologies, Glad to have you in our tech
+                            ecosystem.</p>
+                            <form class="form-wrap" method="post" action="">
 								{{ form.hidden_tag() }}
 								  <div class="row">
 									 <div class="col-lg-12">
@@ -64,18 +70,13 @@
 								  </p>
 							   </form>
 
-							</div>
-						 </div>
-						 <div class="col-lg-5 content-right">
-							<img src="{{url_for('static', filename='images/login/02.png')}}" class="img-fluid image-right" alt="">
-						 </div>
-					  </div>
-				   </div>
-				</div>
-			 </div>
-		  </div>
-	   </div>
-	</section>
-	</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!---->
+        </div>
+    </section>
+</div>
 
 {% endblock content %}

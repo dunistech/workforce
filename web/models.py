@@ -8,10 +8,10 @@ from flask import current_app
 db = SQLAlchemy()
 #s_manager = LoginManager()
 
-usr_role = db.Table(
-    'usr_role',
-    db.Column('uid', db.Integer, db.ForeignKey('user.id')),
-    db.Column('rid', db.Integer, db.ForeignKey('role.id')),
+user_roles = db.Table(
+    'user_roles',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
+    db.Column('role_id', db.Integer, db.ForeignKey('role.id')),
     keep_existing=True
 )
 
@@ -23,7 +23,6 @@ class User(db.Model, UserMixin):
     phone = db.Column(db.String(20), unique=True, index=True)
     password = db.Column(db.String(500), nullable=False)
     photo = db.Column(db.String(1000))
-    admin = db.Column(db.Boolean(), default=False)
     gender = db.Column(db.String(50))
     city = db.Column(db.String(50))
     address = db.Column(db.String(50))
@@ -58,7 +57,7 @@ class User(db.Model, UserMixin):
     assigned_tasks = db.relationship('Assigned_Task', back_populates='user', lazy=True)
     tasks = db.relationship('Task', back_populates='user', lazy=True)
     attendance = db.relationship('Attendance', backref='user', lazy=True)
-    role = db.relationship('Role', secondary=usr_role, back_populates='user', lazy='dynamic')
+    roles = db.relationship('Role', secondary=user_roles, back_populates='user', lazy='dynamic')
     
     created = db.Column(db.DateTime(timezone=True), default=func.now())
     updated = db.Column(db.DateTime(timezone=True), default=func.now())
@@ -68,10 +67,10 @@ class User(db.Model, UserMixin):
         return str(self.id)
 
     def is_admin(self):
-        return any(role.type == 'admin' for role in self.role)
+        return any(role.type == 'admin' for role in self.roles)
 
     def permit(self):
-        return [r.type for r in self.role]
+        return [r.type for r in self.roles]
 
     def generate_token(self, exp=600, type='reset'):
         payload = {'uid': self.id, 'exp': time.time() + exp, 'type': type }
@@ -88,6 +87,44 @@ class User(db.Model, UserMixin):
         except:
             return
         return user, type
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'username': self.username,
+            'email': self.email,
+            'phone': self.phone,
+            'photo': self.photo,
+            'gender': self.gender,
+            'city': self.city,
+            'address': self.address,
+            'about': self.about,
+            'acct_no': self.acct_no,
+            'bank': self.bank,
+            'socials': self.socials,
+            'src': self.src,
+            'category': self.category,
+            'online': self.online,
+            'status': self.status,
+            'verified': self.verified,
+            'ip': self.ip,
+            'dob': self.dob.isoformat() if self.dob else None,
+            'designation': self.designation,
+            'academic_qualification': self.academic_qualification,
+            'experience_years': self.experience_years,
+            'experience_level': self.experience_level,
+            'refferee_type': self.refferee_type,
+            'refferee_email': self.refferee_email,
+            'refferee_phone': self.refferee_phone,
+            'refferee_address': self.refferee_address,
+            'reg_num': self.reg_num,
+            'course': self.course,
+            'cert_status': self.cert_status,
+            'completion_status': self.completion_status,
+            'created': self.created.isoformat() if self.created else None,
+            'updated': self.updated.isoformat() if self.updated else None,
+        }
 
     def __repr__(self):
         return f"User('{self.name}', '{self.email}', '{self.photo}')"
@@ -158,7 +195,7 @@ class Role(db.Model):
     __tablename__ = 'role'
     id = db.Column(db.Integer, primary_key = True)
     type = db.Column(db.String(100), unique=True)
-    user = db.relationship('User', secondary=usr_role, back_populates='role', lazy='dynamic')
+    user = db.relationship('User', secondary=user_roles, back_populates='roles', lazy='dynamic')
 
 class Payment(db.Model):
     __tablename__ = 'payment'

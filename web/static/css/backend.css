@@ -11053,7 +11053,7 @@ body.sidebar-main .iq-top-navbar {
 
 @media (min-width: 1300px) {
     .iq-navbar-logo {
-        display: none !important
+        /* display: none !important */
     }
     .iq-navbar-logo>a {
         display: none

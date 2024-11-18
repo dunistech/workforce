@@ -15,7 +15,6 @@ def confirm_email(func):
         return func(*args, **kwargs)
     return wrapper_function
 
-
 def disable_csrf(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -32,15 +31,45 @@ def role_required(*required_roles):
         @wraps(view_func)
         def wrapper(*args, **kwargs):
             if not current_user.is_authenticated:
+                # Return a JSON response if the user is not logged in
+                return jsonify({'success': False, 'error': "login required"})
+
+            user_has_role = any(r_roles in [role.type for role in current_user.roles] for r_roles in required_roles)
+            allow_all = any('*' in r_roles for r_roles in required_roles)
+            
+            if user_has_role or allow_all:
+                return view_func(*args, **kwargs)  # Proceed if the user has the required role(s)
+            else:
+                flash(f'{[x.type for x in current_user.roles]} do not have permission to access this page', 'danger')
+                return redirect(url_for('main.index'))  # Ensure this redirect is returned
+
+        return wrapper
+    return decorator
+
+
+def role_required_0(*required_roles):
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(*args, **kwargs):
+            if not current_user.is_authenticated:
                 # return redirect(url_for('auth.signin'))
                 # Remove the "abort(401)" part, so it won't tamper/affect other operations
                 return jsonify({'success': False, 'error': "login required"})
 
-            user_has_role = any(r_roles in [role.type for role in current_user.role] for r_roles in required_roles)
+            user_has_role = any(r_roles in [role.type for role in current_user.roles] for r_roles in required_roles)
             allow_all = any( '*' in r_roles for r_roles in required_roles)
             
             # return view_func(*args, **kwargs) if user_has_role or allow_all else redirect(url_for('main.index', usrname=current_user.username)) #abort(403) #forbidden
-            return view_func(*args, **kwargs) if user_has_role or allow_all else redirect(url_for('main.index')) #abort(403) #forbidden
+            # return view_func(*args, **kwargs) if user_has_role or allow_all else redirect(url_for('main.index')) #abort(403) #forbidden
+            
+            if user_has_role or allow_all:
+                return view_func(*args, **kwargs)
+            
+            else:
+                flash(f'{[x.type for x in current_user.roles]} do not have permission to here', 'danger')
+                # return jsonify({[x.type for x in current_user.roles]})
+                # return jsonify([x.type for x in current_user.roles])
+                redirect(url_for('main.index')) #abort(403) #forbidden
 
         return wrapper
     return decorator

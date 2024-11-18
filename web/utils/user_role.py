@@ -1,31 +1,36 @@
 
+# Define a custom filter for role checking
+def has_role(user, roles):
+    return any(role in [r.type for r in user.roles] for role in roles)
+
+
 def type(user):
     
-    for r in user.role:
+    for r in user.roles:
         return r.type.capitalize() or 'student'
 
     """    
     r = 0
-    r =   r in [ r.type for r in user.role] if r in user.role else 'student'
+    r =   r in [ r.type for r in user.roles] if r in user.roles else 'student'
     return  r
 """
 
-'''    for r in user.role:
-        #role = r.type if r in user.role else 'student'
+'''    for r in user.roles:
+        #role = r.type if r in user.roles else 'student'
         return r.type if r else 'student'
         #return r.type or 'student'
 '''
 
-"""    for r in user.role:
+"""    for r in user.roles:
         return r.type or 'student'"""
 
 """
 <!---- #TEST-CASES
-{%for r in current_user.role%}{{r.type}}{%endfor%}
+{%for r in current_user.roles%}{{r.type}}{%endfor%}
 {{ current_user|type }} 
 <!--
-{{current_user.role}} ---
-{% for role in current_user.role %} 
+{{current_user.roles}} ---
+{% for role in current_user.roles %} 
 {{
 role.id, 
 role.type, 
